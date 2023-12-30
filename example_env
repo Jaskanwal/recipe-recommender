@@ -1,0 +1,6 @@
+## Take the contents of the file and save it in .env or use it to set the environment variables
+WORKING_DIR="SET THE WORKING DIRECTORY"
+PYTHONPATH=${WORKING_DIR}:$PYTHONPATH
+LOGS_ROOT=${WORKING_DIR}/logs
+DATA_ROOT=${WORKING_DIR}/data
+LOG_MODE=JSON
