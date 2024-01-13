@@ -31,9 +31,8 @@ repos:
 #     -   id: autoflake
 #         args: ['--remove-unused-variables', '--remove-all-unused-imports']
 
-
-# -   repo: https://github.com/PyCQA/flake8
-#     rev: '7.0.0'
-#     hooks:
-#     -   id: flake8
-#         language_version: python3
+-   repo: https://github.com/PyCQA/flake8
+    rev: '7.0.0'
+    hooks:
+    -   id: flake8
+        language_version: python3
