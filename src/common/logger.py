@@ -72,11 +72,7 @@ def get_logger(
             level=logging.INFO,
         )
     else:
-        log_file = Path(
-            os.path.join(
-                os.getenv("LOGS_ROOT", os.path.join(os.getcwd(), "logs")), log_file
-            )
-        )
+        log_file = Path(os.path.join(os.getenv("LOGS_ROOT", os.path.join(os.getcwd(), "logs")), log_file))
         os.makedirs(log_file.parent, exist_ok=True)
 
         logging.config.dictConfig(
