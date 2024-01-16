@@ -9,6 +9,15 @@ clean_non_ascii = (
 
 
 def clean_string(string: str) -> str:
+    """Process a string to remove html text, extra spaces ad non-ascii characters
+
+    Args:
+        string (str): input string
+
+    Returns:
+        str: output string after pre-processing
+    """
+
     def replace_numeric(match):
         char = match.group(0)
         try:
