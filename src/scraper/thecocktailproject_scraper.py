@@ -339,6 +339,3 @@ def run_scraper():
 
 if __name__ == "__main__":
     run_scraper()
-
-    # path = "https://www.thecocktailproject.com/drink-recipes/sqrrl-carajillo"
-    # temp = fetch_recipe_details(recipe_url=path, recipe_id="test_1")
