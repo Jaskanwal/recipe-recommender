@@ -5,13 +5,12 @@ import json
 import os
 from typing import List, Tuple, Dict
 import uuid
-import shutil
 import re
 from collections import defaultdict
 
 from src.common.utils import clean_non_ascii
 from src.scraper.constants import headers
-from src.scraper.utils import initialize_scraper
+from src.scraper.utils import initialize_scraper, save_recipe_image
 
 website_tag = "archanaskitchen"
 BASE_WEBSITE_URL = "https://www.archanaskitchen.com"
@@ -45,32 +44,6 @@ def get_recipe_links_on_single_page(x: int) -> Tuple[str, List[str]]:
             recipe_urls.append(recipe)
 
     return url, recipe_urls
-
-
-def save_recipe_image(source_image_url: str, local_image_url: str) -> bool:
-    """Save the image from source url on web to a destination local url
-
-    Args:
-        source_image_url (str): url of the source image on web
-        local_image_url (str): url of the destination url
-
-    Returns:
-        bool: indicator if saving image is successful or not
-    """
-    r = requests.get(source_image_url, stream=True, headers=headers)
-
-    try:
-        with open(local_image_url, "wb") as f:
-            r.raw.decode_content = True
-            shutil.copyfileobj(r.raw, f)
-        return True
-    except Exception:
-        LOGGER.info(
-            "Could not download recipe image",
-            source_image_url=source_image_url,
-            local_image_url=local_image_url,
-        )
-        return False
 
 
 def get_recipe_name(recipe_details: BeautifulSoup, recipe_url: str) -> str:
@@ -270,7 +243,11 @@ def fetch_recipe_details(recipe_url: str, recipe_id: str) -> bool:
 
         # Download the image to local .,
         local_image_url = os.path.join(DATA_DIR_IMAGES, f"{recipe_id}.jpg")
-        image_download_status = save_recipe_image(source_image_url, local_image_url)
+        image_download_status = save_recipe_image(
+            source_image_url=source_image_url,
+            local_image_url=local_image_url,
+            logger=LOGGER,
+        )
 
         # Create json blob to save the recipe data
         recipe = {
