@@ -5,15 +5,13 @@ import json
 import os
 from typing import List, Tuple, Dict
 import uuid
-import re
-from collections import defaultdict
 
 from src.common.utils import clean_string
 from src.scraper.constants import headers
 from src.scraper.utils import initialize_scraper, save_recipe_image
 
-website_tag = "archanaskitchen"
-BASE_WEBSITE_URL = "https://www.archanaskitchen.com"
+website_tag = "thecocktailproject"
+BASE_WEBSITE_URL = "https://www.thecocktailproject.com"
 
 LOGGER, DATA_DIR_RECIPES, DATA_DIR_IMAGES = initialize_scraper(website_tag)
 
@@ -29,7 +27,7 @@ def get_recipe_links_on_single_page(x: int) -> Tuple[str, List[str]]:
     """
 
     # page url to to scrape different recepie urls
-    url = BASE_WEBSITE_URL + f"/recipes/page-{x}"
+    url = BASE_WEBSITE_URL + f"/search-recipes/?page={x}"
     r = requests.get(url, headers=headers)
 
     recipe_urls = []
@@ -37,10 +35,10 @@ def get_recipe_links_on_single_page(x: int) -> Tuple[str, List[str]]:
     if r.status_code == 200:
         soup = BeautifulSoup(r.content, features="lxml")
 
-        dishes = soup.find_all("div", class_="blogRecipe")
+        dishes = soup.find_all("div", class_="col-sm-6")
 
         for dish in dishes:
-            recipe = BASE_WEBSITE_URL + dish.find("a").get("href")
+            recipe = BASE_WEBSITE_URL + dish.find("div", class_="item-detail").find("a").get("href")
             recipe_urls.append(recipe)
 
     return url, recipe_urls
@@ -49,7 +47,7 @@ def get_recipe_links_on_single_page(x: int) -> Tuple[str, List[str]]:
 def get_recipe_name(recipe_details: BeautifulSoup, recipe_url: str) -> str:
     """Get the recipe name"""
     try:
-        name = clean_string(recipe_details.find("h1", class_="recipe-title").text)
+        name = clean_string(recipe_details.find("h1").text)
     except Exception as e:
         LOGGER.error("Could not find recipe name", recipe_url=recipe_url)
         raise e
@@ -60,40 +58,29 @@ def get_recipe_description(recipe_details: BeautifulSoup, recipe_url: str) -> st
     """Get the recipe description"""
     try:
         description = []
-        for item in recipe_details.find("div", class_="row recipedescription").find("span").find_all("p"):
+        for item in recipe_details.find("div", class_="recipe-copy").find_all("p"):
             if len(item.text) > 2:
                 description.append(clean_string(item.text))
-
-    except Exception as e:
+    except Exception:
         LOGGER.error("Could not find recipe description", recipe_url=recipe_url)
-        raise e
-    return "\n".join(description[:-1])
-
-
-def get_recipe_ingredient_list(recipe_details: BeautifulSoup, recipe_url: str) -> List[str]:
-    """Get the list of ingredients"""
-    try:
-        ingredients = [clean_string(item.text) for item in recipe_details.find_all("span", class_="ingredient_name")]
-    except Exception as e:
-        LOGGER.error("Could not find recipe ingredient list", recipe_url=recipe_url)
-        raise e
-    return ingredients
+        description = ""
+    return "\n".join(description)
 
 
 def get_recipe_cooking_steps(recipe_details: BeautifulSoup, recipe_url: str) -> Dict[str, List[str]]:
     """Get the recipe description"""
     parsed_recipe_steps = {}
     try:
-        recipe_steps_groups = recipe_details.find_all("div", class_="recipeinstructions")
+        recipe_steps_groups = recipe_details.find_all("div", class_="recipe-instructions-content")
         for idx, recipe_steps_group in enumerate(recipe_steps_groups):
-            try:
-                key = clean_string(recipe_steps_group.find("h2", class_="recipeinstructionstitle").text)
-            except AttributeError:
-                key = f"group_{idx}"
+            key = f"group_{idx}"
 
             value = [
-                clean_string(item.text)
-                for item in recipe_steps_group.find_all("li", attrs={"itemprop": "recipeInstructions"})
+                step.strip(" ") + "."
+                for paragraph in recipe_steps_group.find_all("p")
+                if "nbsp;" not in paragraph.text
+                for step in clean_string(paragraph.text).split(".")
+                if len(step) > 0
             ]
             parsed_recipe_steps[key] = value
 
@@ -103,87 +90,128 @@ def get_recipe_cooking_steps(recipe_details: BeautifulSoup, recipe_url: str) -> 
     return parsed_recipe_steps
 
 
-def get_recipe_cusine(recipe_details: BeautifulSoup, recipe_url: str) -> str:
-    """Get the recipe cusine"""
+def get_recipe_ingredient_list(recipe_details: BeautifulSoup, recipe_url: str) -> List[str]:
+    """Get the list of ingredients"""
     try:
-        cusine = clean_string(recipe_details.find("span", attrs={"itemprop": "recipeCuisine"}).text)
-    except Exception:
-        LOGGER.info("Could not find recipe cusine", recipe_url=recipe_url)
-        cusine = ""
-    return cusine
+        ingredients = [
+            clean_string(item.text)
+            for item in recipe_details.find_all("div", class_="field--name-field-ingredient-brand-name")
+        ]
 
-
-def get_recipe_diet(recipe_details: BeautifulSoup, recipe_url: str) -> str:
-    """Get the recipe diet, e.g., veg, vegan etc"""
-    try:
-        diet = clean_string(
-            recipe_details.find("div", class_="col-12 diet").find("span", attrs={"itemprop": "keywords"}).text
-        )
-    except Exception:
-        LOGGER.info("Could not find recipe diet", recipe_url=recipe_url)
-        diet = ""
-    return diet
-
-
-def get_recipe_servings(recipe_details: BeautifulSoup, recipe_url: str) -> str:
-    "Get the number of servings based on which the ingredients are marked"
-    try:
-        servings = clean_string(recipe_details.find("span", attrs={"itemprop": "recipeYield"}).text)
-        servings = re.search(re.compile(r"\d+"), servings).group()
-    except Exception:
-        LOGGER.info("Could not find number of servigs", recipe_url=recipe_url)
-        servings = ""
-    return servings
+    except Exception as e:
+        LOGGER.error("Could not find recipe ingredient list", recipe_url=recipe_url)
+        raise e
+    return ingredients
 
 
 def get_recipe_cooking_difficulty(recipe_details: BeautifulSoup, recipe_url: str) -> str:
     """Difficulty level in cooking"""
-    difficulty = ""
+    try:
+        try:
+            drink_properties = recipe_details.find_all("div", class_="drink-properties-incredible")
+
+            difficulty = [
+                clean_string(property.find("p").text)
+                for property in drink_properties
+                if property.find("h4", class_="text-uppercase").text.lower() == "skill level"
+            ][0]
+        except Exception:
+            try:
+                drink_properties = recipe_details.find_all("div", class_="drink-properties-spotlight")
+
+                difficulty = [
+                    clean_string(property.find("p").text)
+                    for property in drink_properties
+                    if property.find("h4", class_="text-uppercase").text.lower() == "skill level"
+                ][0]
+            except Exception:
+                drink_properties = recipe_details.find("div", class_="drink-properties")
+                difficulty = [
+                    clean_string(property.find("p").text)
+                    for property in drink_properties.find_all("li", class_="col-sm-4")
+                    if property.find("figcaption", class_="text-uppercase").text.lower() == "skill level"
+                ][0]
+
+    except Exception:
+        LOGGER.info("Could not find cooking difficulty", recipe_url=recipe_url)
+        difficulty = ""
     return difficulty
 
 
-def get_recipe_cooking_time(recipe_details: BeautifulSoup, recipe_url: str) -> str:
-    """Total time estimate for cooking"""
+def get_recipe_flavor(recipe_details: BeautifulSoup, recipe_url: str) -> str:
+    """Flavor of the recipe"""
     try:
-        total_time = clean_string(recipe_details.find("span", attrs={"itemprop": "totalTime"}).text)
-        total_time = re.search(re.compile(r"\d+\s."), total_time).group()
-        total_time = total_time.replace(" M", " minutes")
-        total_time = total_time.replace(" H", " hour")
+        try:
+            drink_properties = recipe_details.find_all("div", class_="drink-properties-incredible")
+
+            flavor = [
+                clean_string(property.find("p").text)
+                for property in drink_properties
+                if property.find("h4", class_="text-uppercase").text.lower() == "flavor"
+            ][0]
+        except Exception:
+            try:
+                drink_properties = recipe_details.find_all("div", class_="drink-properties-spotlight")
+
+                flavor = [
+                    clean_string(property.find("p").text)
+                    for property in drink_properties
+                    if property.find("h4", class_="text-uppercase").text.lower() == "flavor"
+                ][0]
+
+            except Exception:
+                drink_properties = recipe_details.find("div", class_="drink-properties")
+                flavor = [
+                    clean_string(property.find("p").text)
+                    for property in drink_properties.find_all("li", class_="col-sm-4")
+                    if property.find("figcaption", class_="text-uppercase").text.lower() == "flavor"
+                ][0]
+
     except Exception:
-        LOGGER.info("Could not find total cooking time", recipe_url=recipe_url)
-        total_time = ""
-    return total_time
+        LOGGER.info("Could not find recipe flavor", recipe_url=recipe_url)
+        flavor = ""
+    return flavor
 
 
 def get_recipe_ingredient_quantities(recipe_details: BeautifulSoup, recipe_url: str) -> Dict[str, List[str]]:
     """Detailed quantity of ingredients"""
-    parsed_ingredients = defaultdict(list)
+    parsed_ingredients = {}
     try:
-        ingredients = (
-            recipe_details.find("div", class_="recipeingredients")
-            .find("ul", class_="list-unstyled")
-            .find_all(lambda tag: tag.name in ["li", "b"])
-        )
+        ingredients_container = recipe_details.find("div", class_="field--name-field-ingredient")
 
-        tag = "group_0"
+        ingredients_list = []
 
-        for ingredient in ingredients:
-            content = ", ".join([clean_string(item) for item in ingredient.text.split(",")])
-            if ingredient.name == "b":
-                tag = content
+        for ingredient_div in ingredients_container.find_all("div", class_="paragraph--type--ingredient"):
+            quantity_unit = ingredient_div.find("div", class_="field--name-field-ingredient-quantity-unit")
+            brand_name = ingredient_div.find("div", class_="field--name-field-ingredient-brand-name")
+            description = ingredient_div.find("div", class_="field--name-field-ingredient-description")
+
+            if quantity_unit and brand_name:
+                ingredient = f"{quantity_unit.text} {brand_name.text}"
+            elif quantity_unit and description:
+                ingredient = f"{quantity_unit.text} {description.text}"
+            elif description:
+                ingredient = description.text
+            elif brand_name:
+                ingredient = brand_name.text
+            else:
                 continue
-            parsed_ingredients[tag].append(content)
+            ingredients_list.append(clean_string(ingredient))
 
+        parsed_ingredients["group_0"] = ingredients_list
     except Exception:
         LOGGER.info("Could not find ingredient quantities", recipe_url=recipe_url)
-    return dict(parsed_ingredients)
+    return parsed_ingredients
 
 
 def get_image_url(recipe_details: BeautifulSoup, recipe_url: str) -> str:
     "Url of a image showing the dish"
     try:
-        source_image_url = recipe_details.find("div", class_="recipe-image").find("img").get("src")
-        source_image_url = BASE_WEBSITE_URL + source_image_url
+        try:
+            source_image_url = recipe_details.find("div", class_="carousel-item").find("img")
+        except AttributeError:
+            source_image_url = recipe_details.find("div", class_="main-image-subblock").find("img")
+        source_image_url = BASE_WEBSITE_URL + source_image_url.get("src")
 
     except Exception:
         LOGGER.info("Could not find image_url", recipe_url=recipe_url)
@@ -219,19 +247,20 @@ def fetch_recipe_details(recipe_url: str, recipe_id: str) -> bool:
         ingredients = get_recipe_ingredient_list(recipe_details, recipe_url)
 
         # Get the recipe cusine
-        cusine = get_recipe_cusine(recipe_details, recipe_url)
+        cusine = ""
 
         # Get the recipe diet, e.g., veg, vegan etc
-        diet = get_recipe_diet(recipe_details, recipe_url)
+        diet = get_recipe_flavor(recipe_details, recipe_url) + " " + "cocktail"
+        diet = diet.strip(" ")
 
         # Get the number of servings based on which the ingredients are marked
-        servings = get_recipe_servings(recipe_details, recipe_url)
+        servings = 1
 
         # Difficulty level in cooking
         difficulty = get_recipe_cooking_difficulty(recipe_details, recipe_url)
 
         # Total time estimate for cooking
-        total_time = get_recipe_cooking_time(recipe_details, recipe_url)
+        total_time = ""
 
         # Detailed quantity of ingredients
         parsed_ingredients = get_recipe_ingredient_quantities(recipe_details, recipe_url)
@@ -278,11 +307,12 @@ def fetch_recipe_details(recipe_url: str, recipe_id: str) -> bool:
 
 def run_scraper():
     """Main function to run the scraper."""
-    page_number = 1
+    page_number = 0
     url, recipe_urls = get_recipe_links_on_single_page(page_number)
     total_calls = 0
     successful_calls = 0
     LOGGER.info("Starting scraping.")
+
     while len(recipe_urls) > 0:
         for recipe_url in recipe_urls:
             recipe_id = str(

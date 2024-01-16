@@ -5,10 +5,9 @@ import json
 import os
 from typing import List, Tuple, Dict
 import uuid
-import shutil
-from src.common.utils import clean_non_ascii
+from src.common.utils import clean_string
 from src.scraper.constants import headers
-from src.scraper.utils import initialize_scraper
+from src.scraper.utils import initialize_scraper, save_recipe_image
 
 
 website_tag = "vegrecipesofindia"
@@ -44,36 +43,10 @@ def get_recipe_links_on_single_page(x: int) -> Tuple[str, List[str]]:
     return url, recipe_urls
 
 
-def save_recipe_image(source_image_url: str, local_image_url: str) -> bool:
-    """Save the image from source url on web to a destination local url
-
-    Args:
-        source_image_url (str): url of the source image on web
-        local_image_url (str): url of the destination url
-
-    Returns:
-        bool: indicator if saving image is successful or not
-    """
-
-    try:
-        r = requests.get(source_image_url, stream=True, headers=headers)
-        with open(local_image_url, "wb") as f:
-            r.raw.decode_content = True
-            shutil.copyfileobj(r.raw, f)
-        return True
-    except Exception:
-        LOGGER.info(
-            "Could not download recipe image",
-            source_image_url=source_image_url,
-            local_image_url=local_image_url,
-        )
-        return False
-
-
 def get_recipe_name(recipe_details: BeautifulSoup, recipe_url: str) -> str:
     """Get the recipe name"""
     try:
-        name = clean_non_ascii(recipe_details.find("h2", class_="wprm-recipe-name wprm-block-text-normal").text)
+        name = clean_string(recipe_details.find("h2", class_="wprm-recipe-name wprm-block-text-normal").text)
     except Exception as e:
         LOGGER.error("Could not find recipe name", recipe_url=recipe_url)
         raise e
@@ -83,9 +56,7 @@ def get_recipe_name(recipe_details: BeautifulSoup, recipe_url: str) -> str:
 def get_recipe_description(recipe_details: BeautifulSoup, recipe_url: str) -> str:
     """Get the recipe description"""
     try:
-        desciption = clean_non_ascii(
-            recipe_details.find("div", class_="wprm-recipe-summary wprm-block-text-normal").text
-        )
+        desciption = clean_string(recipe_details.find("div", class_="wprm-recipe-summary wprm-block-text-normal").text)
     except Exception as e:
         LOGGER.error("Could not find recipe description", recipe_url=recipe_url)
         raise e
@@ -96,7 +67,7 @@ def get_recipe_ingredient_list(recipe_details: BeautifulSoup, recipe_url: str) -
     """Get the list of ingredients"""
     try:
         ingredients = [
-            clean_non_ascii(item.text) for item in recipe_details.find_all(class_="wprm-recipe-ingredient-name")
+            clean_string(item.text) for item in recipe_details.find_all(class_="wprm-recipe-ingredient-name")
         ]
     except Exception as e:
         LOGGER.error("Could not find recipe ingredient list", recipe_url=recipe_url)
@@ -111,13 +82,12 @@ def get_recipe_cooking_steps(recipe_details: BeautifulSoup, recipe_url: str) -> 
         recipe_steps_groups = recipe_details.find_all("div", class_="wprm-recipe-instruction-group")
         for idx, recipe_steps_group in enumerate(recipe_steps_groups):
             try:
-                key = clean_non_ascii(recipe_steps_group.find(class_="wprm-recipe-instruction-group-name").text)
+                key = clean_string(recipe_steps_group.find(class_="wprm-recipe-instruction-group-name").text)
             except AttributeError:
                 key = f"group_{idx}"
 
             value = [
-                clean_non_ascii(item.text)
-                for item in recipe_steps_group.find_all("li", class_="wprm-recipe-instruction")
+                clean_string(item.text) for item in recipe_steps_group.find_all("li", class_="wprm-recipe-instruction")
             ]
             parsed_recipe_steps[key] = value
 
@@ -130,7 +100,7 @@ def get_recipe_cooking_steps(recipe_details: BeautifulSoup, recipe_url: str) -> 
 def get_recipe_cusine(recipe_details: BeautifulSoup, recipe_url: str) -> str:
     """Get the recipe cusine"""
     try:
-        cusine = clean_non_ascii(recipe_details.find("span", class_="wprm-recipe-cuisine wprm-block-text-bold").text)
+        cusine = clean_string(recipe_details.find("span", class_="wprm-recipe-cuisine wprm-block-text-bold").text)
     except Exception:
         LOGGER.info("Could not find recipe cusine", recipe_url=recipe_url)
         cusine = ""
@@ -140,9 +110,7 @@ def get_recipe_cusine(recipe_details: BeautifulSoup, recipe_url: str) -> str:
 def get_recipe_diet(recipe_details: BeautifulSoup, recipe_url: str) -> str:
     """Get the recipe diet, e.g., veg, vegan etc"""
     try:
-        diet = clean_non_ascii(
-            recipe_details.find("span", class_="wprm-recipe-suitablefordiet wprm-block-text-bold").text
-        )
+        diet = clean_string(recipe_details.find("span", class_="wprm-recipe-suitablefordiet wprm-block-text-bold").text)
     except Exception:
         LOGGER.info("Could not find recipe diet", recipe_url=recipe_url)
         diet = ""
@@ -152,7 +120,7 @@ def get_recipe_diet(recipe_details: BeautifulSoup, recipe_url: str) -> str:
 def get_recipe_servings(recipe_details: BeautifulSoup, recipe_url: str) -> str:
     "Get the number of servings based on which the ingredients are marked"
     try:
-        servings = clean_non_ascii(recipe_details.find(class_="wprm-recipe-servings").text)
+        servings = clean_string(recipe_details.find(class_="wprm-recipe-servings").text)
     except Exception:
         LOGGER.info("Could not find number of servigs", recipe_url=recipe_url)
         servings = ""
@@ -162,7 +130,7 @@ def get_recipe_servings(recipe_details: BeautifulSoup, recipe_url: str) -> str:
 def get_recipe_cooking_difficulty(recipe_details: BeautifulSoup, recipe_url: str) -> str:
     """Difficulty level in cooking"""
     try:
-        difficulty = clean_non_ascii(
+        difficulty = clean_string(
             recipe_details.find("div", class_="wprm-recipe-difficulty-container")
             .find("span", class_="wprm-recipe-difficulty")
             .text
@@ -176,7 +144,7 @@ def get_recipe_cooking_difficulty(recipe_details: BeautifulSoup, recipe_url: str
 def get_recipe_cooking_time(recipe_details: BeautifulSoup, recipe_url: str) -> str:
     """Total time estimate for cooking"""
     try:
-        total_time = clean_non_ascii(
+        total_time = clean_string(
             recipe_details.find("div", class_="wprm-recipe-total-time-container")
             .find("span", class_="wprm-recipe-total_time")
             .text
@@ -195,12 +163,12 @@ def get_recipe_ingredient_quantities(recipe_details: BeautifulSoup, recipe_url: 
 
         for idx, ingredient_group in enumerate(ingredient_groups):
             try:
-                key = clean_non_ascii(ingredient_group.find(class_="wprm-recipe-ingredient-group-name").text)
+                key = clean_string(ingredient_group.find(class_="wprm-recipe-ingredient-group-name").text)
             except AttributeError:
                 key = f"group_{idx}"
 
             value = [
-                clean_non_ascii(item.text) for item in ingredient_group.find_all("li", class_="wprm-recipe-ingredient")
+                clean_string(item.text) for item in ingredient_group.find_all("li", class_="wprm-recipe-ingredient")
             ]
             parsed_ingredients[key] = value
 
@@ -273,7 +241,11 @@ def fetch_recipe_details(recipe_url: str, recipe_id: str) -> bool:
 
         # Download the image to local .,
         local_image_url = os.path.join(DATA_DIR_IMAGES, f"{recipe_id}.jpg")
-        image_download_status = save_recipe_image(source_image_url, local_image_url)
+        image_download_status = save_recipe_image(
+            source_image_url=source_image_url,
+            local_image_url=local_image_url,
+            logger=LOGGER,
+        )
 
         # Create json blob to save the recipe data
         recipe = {
