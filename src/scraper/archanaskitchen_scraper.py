@@ -8,7 +8,7 @@ import uuid
 import re
 from collections import defaultdict
 
-from src.common.utils import clean_non_ascii
+from src.common.utils import clean_string
 from src.scraper.constants import headers
 from src.scraper.utils import initialize_scraper, save_recipe_image
 
@@ -49,7 +49,7 @@ def get_recipe_links_on_single_page(x: int) -> Tuple[str, List[str]]:
 def get_recipe_name(recipe_details: BeautifulSoup, recipe_url: str) -> str:
     """Get the recipe name"""
     try:
-        name = clean_non_ascii(recipe_details.find("h1", class_="recipe-title").text)
+        name = clean_string(recipe_details.find("h1", class_="recipe-title").text)
     except Exception as e:
         LOGGER.error("Could not find recipe name", recipe_url=recipe_url)
         raise e
@@ -62,7 +62,7 @@ def get_recipe_description(recipe_details: BeautifulSoup, recipe_url: str) -> st
         description = []
         for item in recipe_details.find("div", class_="row recipedescription").find("span").find_all("p"):
             if len(item.text) > 2:
-                description.append(clean_non_ascii(item.text))
+                description.append(clean_string(item.text))
 
     except Exception as e:
         LOGGER.error("Could not find recipe description", recipe_url=recipe_url)
@@ -73,7 +73,7 @@ def get_recipe_description(recipe_details: BeautifulSoup, recipe_url: str) -> st
 def get_recipe_ingredient_list(recipe_details: BeautifulSoup, recipe_url: str) -> List[str]:
     """Get the list of ingredients"""
     try:
-        ingredients = [clean_non_ascii(item.text) for item in recipe_details.find_all("span", class_="ingredient_name")]
+        ingredients = [clean_string(item.text) for item in recipe_details.find_all("span", class_="ingredient_name")]
     except Exception as e:
         LOGGER.error("Could not find recipe ingredient list", recipe_url=recipe_url)
         raise e
@@ -87,12 +87,12 @@ def get_recipe_cooking_steps(recipe_details: BeautifulSoup, recipe_url: str) -> 
         recipe_steps_groups = recipe_details.find_all("div", class_="recipeinstructions")
         for idx, recipe_steps_group in enumerate(recipe_steps_groups):
             try:
-                key = clean_non_ascii(recipe_steps_group.find("h2", class_="recipeinstructionstitle").text)
+                key = clean_string(recipe_steps_group.find("h2", class_="recipeinstructionstitle").text)
             except AttributeError:
                 key = f"group_{idx}"
 
             value = [
-                clean_non_ascii(item.text)
+                clean_string(item.text)
                 for item in recipe_steps_group.find_all("li", attrs={"itemprop": "recipeInstructions"})
             ]
             parsed_recipe_steps[key] = value
@@ -106,7 +106,7 @@ def get_recipe_cooking_steps(recipe_details: BeautifulSoup, recipe_url: str) -> 
 def get_recipe_cusine(recipe_details: BeautifulSoup, recipe_url: str) -> str:
     """Get the recipe cusine"""
     try:
-        cusine = clean_non_ascii(recipe_details.find("span", attrs={"itemprop": "recipeCuisine"}).text)
+        cusine = clean_string(recipe_details.find("span", attrs={"itemprop": "recipeCuisine"}).text)
     except Exception:
         LOGGER.info("Could not find recipe cusine", recipe_url=recipe_url)
         cusine = ""
@@ -116,7 +116,7 @@ def get_recipe_cusine(recipe_details: BeautifulSoup, recipe_url: str) -> str:
 def get_recipe_diet(recipe_details: BeautifulSoup, recipe_url: str) -> str:
     """Get the recipe diet, e.g., veg, vegan etc"""
     try:
-        diet = clean_non_ascii(
+        diet = clean_string(
             recipe_details.find("div", class_="col-12 diet").find("span", attrs={"itemprop": "keywords"}).text
         )
     except Exception:
@@ -128,7 +128,7 @@ def get_recipe_diet(recipe_details: BeautifulSoup, recipe_url: str) -> str:
 def get_recipe_servings(recipe_details: BeautifulSoup, recipe_url: str) -> str:
     "Get the number of servings based on which the ingredients are marked"
     try:
-        servings = clean_non_ascii(recipe_details.find("span", attrs={"itemprop": "recipeYield"}).text)
+        servings = clean_string(recipe_details.find("span", attrs={"itemprop": "recipeYield"}).text)
         servings = re.search(re.compile(r"\d+"), servings).group()
     except Exception:
         LOGGER.info("Could not find number of servigs", recipe_url=recipe_url)
@@ -145,7 +145,7 @@ def get_recipe_cooking_difficulty(recipe_details: BeautifulSoup, recipe_url: str
 def get_recipe_cooking_time(recipe_details: BeautifulSoup, recipe_url: str) -> str:
     """Total time estimate for cooking"""
     try:
-        total_time = clean_non_ascii(recipe_details.find("span", attrs={"itemprop": "totalTime"}).text)
+        total_time = clean_string(recipe_details.find("span", attrs={"itemprop": "totalTime"}).text)
         total_time = re.search(re.compile(r"\d+\s."), total_time).group()
         total_time = total_time.replace(" M", " minutes")
         total_time = total_time.replace(" H", " hour")
@@ -168,9 +168,7 @@ def get_recipe_ingredient_quantities(recipe_details: BeautifulSoup, recipe_url: 
         tag = "group_0"
 
         for ingredient in ingredients:
-            content = ", ".join(
-                [re.sub(r"^\s+|\s+$|\n|\t", "", clean_non_ascii(item)) for item in ingredient.text.split(",")]
-            )
+            content = ", ".join([clean_string(item) for item in ingredient.text.split(",")])
             if ingredient.name == "b":
                 tag = content
                 continue

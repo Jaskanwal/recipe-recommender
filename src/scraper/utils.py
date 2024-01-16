@@ -33,6 +33,8 @@ def save_recipe_image(source_image_url: str, local_image_url: str, logger: struc
         bool: indicator if saving image is successful or not
     """
 
+    if os.path.exists(local_image_url):
+        return True
     try:
         r = requests.get(source_image_url, stream=True, headers=headers)
         with open(local_image_url, "wb") as f:

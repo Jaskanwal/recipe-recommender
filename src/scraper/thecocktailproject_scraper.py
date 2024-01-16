@@ -61,9 +61,9 @@ def get_recipe_description(recipe_details: BeautifulSoup, recipe_url: str) -> st
         for item in recipe_details.find("div", class_="recipe-copy").find_all("p"):
             if len(item.text) > 2:
                 description.append(clean_string(item.text))
-    except Exception as e:
+    except Exception:
         LOGGER.error("Could not find recipe description", recipe_url=recipe_url)
-        raise e
+        description = ""
     return "\n".join(description)
 
 
@@ -107,13 +107,30 @@ def get_recipe_ingredient_list(recipe_details: BeautifulSoup, recipe_url: str) -
 def get_recipe_cooking_difficulty(recipe_details: BeautifulSoup, recipe_url: str) -> str:
     """Difficulty level in cooking"""
     try:
-        drink_properties = recipe_details.find_all("div", class_="drink-properties-incredible")
+        try:
+            drink_properties = recipe_details.find_all("div", class_="drink-properties-incredible")
 
-        difficulty = [
-            clean_string(property.find("p").text)
-            for property in drink_properties
-            if property.find("h4", class_="text-uppercase").text.lower() == "skill level"
-        ][0]
+            difficulty = [
+                clean_string(property.find("p").text)
+                for property in drink_properties
+                if property.find("h4", class_="text-uppercase").text.lower() == "skill level"
+            ][0]
+        except Exception:
+            try:
+                drink_properties = recipe_details.find_all("div", class_="drink-properties-spotlight")
+
+                difficulty = [
+                    clean_string(property.find("p").text)
+                    for property in drink_properties
+                    if property.find("h4", class_="text-uppercase").text.lower() == "skill level"
+                ][0]
+            except Exception:
+                drink_properties = recipe_details.find("div", class_="drink-properties")
+                difficulty = [
+                    clean_string(property.find("p").text)
+                    for property in drink_properties.find_all("li", class_="col-sm-4")
+                    if property.find("figcaption", class_="text-uppercase").text.lower() == "skill level"
+                ][0]
 
     except Exception:
         LOGGER.info("Could not find cooking difficulty", recipe_url=recipe_url)
@@ -124,17 +141,36 @@ def get_recipe_cooking_difficulty(recipe_details: BeautifulSoup, recipe_url: str
 def get_recipe_flavor(recipe_details: BeautifulSoup, recipe_url: str) -> str:
     """Flavor of the recipe"""
     try:
-        drink_properties = recipe_details.find_all("div", class_="drink-properties-incredible")
+        try:
+            drink_properties = recipe_details.find_all("div", class_="drink-properties-incredible")
 
-        difficulty = [
-            clean_string(property.find("p").text)
-            for property in drink_properties
-            if property.find("h4", class_="text-uppercase").text.lower() == "flavor"
-        ][0]
+            flavor = [
+                clean_string(property.find("p").text)
+                for property in drink_properties
+                if property.find("h4", class_="text-uppercase").text.lower() == "flavor"
+            ][0]
+        except Exception:
+            try:
+                drink_properties = recipe_details.find_all("div", class_="drink-properties-spotlight")
+
+                flavor = [
+                    clean_string(property.find("p").text)
+                    for property in drink_properties
+                    if property.find("h4", class_="text-uppercase").text.lower() == "flavor"
+                ][0]
+
+            except Exception:
+                drink_properties = recipe_details.find("div", class_="drink-properties")
+                flavor = [
+                    clean_string(property.find("p").text)
+                    for property in drink_properties.find_all("li", class_="col-sm-4")
+                    if property.find("figcaption", class_="text-uppercase").text.lower() == "flavor"
+                ][0]
+
     except Exception:
         LOGGER.info("Could not find recipe flavor", recipe_url=recipe_url)
-        difficulty = ""
-    return difficulty
+        flavor = ""
+    return flavor
 
 
 def get_recipe_ingredient_quantities(recipe_details: BeautifulSoup, recipe_url: str) -> Dict[str, List[str]]:
@@ -171,7 +207,10 @@ def get_recipe_ingredient_quantities(recipe_details: BeautifulSoup, recipe_url: 
 def get_image_url(recipe_details: BeautifulSoup, recipe_url: str) -> str:
     "Url of a image showing the dish"
     try:
-        source_image_url = recipe_details.find("div", class_="carousel-item").find("img")
+        try:
+            source_image_url = recipe_details.find("div", class_="carousel-item").find("img")
+        except AttributeError:
+            source_image_url = recipe_details.find("div", class_="main-image-subblock").find("img")
         source_image_url = BASE_WEBSITE_URL + source_image_url.get("src")
 
     except Exception:
@@ -211,16 +250,14 @@ def fetch_recipe_details(recipe_url: str, recipe_id: str) -> bool:
         cusine = ""
 
         # Get the recipe diet, e.g., veg, vegan etc
-        diet = "cocktail"
+        diet = get_recipe_flavor(recipe_details, recipe_url) + " " + "cocktail"
+        diet = diet.strip(" ")
 
         # Get the number of servings based on which the ingredients are marked
         servings = 1
 
         # Difficulty level in cooking
         difficulty = get_recipe_cooking_difficulty(recipe_details, recipe_url)
-
-        # Drink flavor
-        flavor = get_recipe_flavor(recipe_details, recipe_url)
 
         # Total time estimate for cooking
         total_time = ""
@@ -255,7 +292,6 @@ def fetch_recipe_details(recipe_url: str, recipe_id: str) -> bool:
             "source_image_url": source_image_url,
             "source_recipe_url": recipe_url,
             "image_avalable": image_download_status,
-            "flavor": flavor,
         }
 
         with open(os.path.join(DATA_DIR_RECIPES, f"{recipe_id}.json"), "w") as outfile:
@@ -303,3 +339,6 @@ def run_scraper():
 
 if __name__ == "__main__":
     run_scraper()
+
+    # path = "https://www.thecocktailproject.com/drink-recipes/sqrrl-carajillo"
+    # temp = fetch_recipe_details(recipe_url=path, recipe_id="test_1")
