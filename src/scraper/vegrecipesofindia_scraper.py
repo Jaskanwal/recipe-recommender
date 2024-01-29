@@ -1,14 +1,15 @@
-from bs4 import BeautifulSoup
-import requests
-import time
 import json
 import os
-from typing import List, Tuple, Dict
+import time
 import uuid
+from typing import Dict, List, Tuple
+
+import requests
+from bs4 import BeautifulSoup
+
 from src.common.utils import clean_string
 from src.scraper.constants import headers
 from src.scraper.utils import initialize_scraper, save_recipe_image
-
 
 website_tag = "vegrecipesofindia"
 BASE_WEBSITE_URL = "https://www.vegrecipesofindia.com"

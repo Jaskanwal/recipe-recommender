@@ -1,12 +1,13 @@
-from bs4 import BeautifulSoup
-import requests
-import time
 import json
 import os
-from typing import List, Tuple, Dict
-import uuid
 import re
+import time
+import uuid
 from collections import defaultdict
+from typing import Dict, List, Tuple
+
+import requests
+from bs4 import BeautifulSoup
 
 from src.common.utils import clean_string
 from src.scraper.constants import headers

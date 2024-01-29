@@ -1,19 +1,21 @@
 """Index the recipies and save them in the vector database."""
-import click
-import json
-from src.common.utils import load_yaml
-from src.common.logger import get_logger
 import glob
+import json
 import os
+
+import click
 import numpy as np
-from langchain_community.vectorstores import Qdrant
-from langchain.embeddings import HuggingFaceEmbeddings
-from langchain import text_splitter
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.schema import Document
 import torch
 from dotenv import load_dotenv
+from langchain import text_splitter
+from langchain.embeddings import HuggingFaceEmbeddings
+from langchain.schema import Document
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_community.vectorstores import Qdrant
 from sentence_transformers import SentenceTransformer
+
+from src.common.logger import get_logger
+from src.common.utils import load_yaml
 
 # load all the environment variables
 load_dotenv()

@@ -1,6 +1,7 @@
-import unicodedata
-import re
 import html
+import re
+import unicodedata
+
 import yaml
 
 # function to remove non-ascii characters from a string
