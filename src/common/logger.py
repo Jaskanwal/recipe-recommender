@@ -61,7 +61,7 @@ def get_logger(
     log_file (Optional, optional): Optional .log file to save the logs Defaults to None.
 
     Returns:
-    _type_: A structlog logger object
+    structlog.BoundLogger: A structlog logger object
     """
     # Create a StreamHandler for console output
     initialize_logging()

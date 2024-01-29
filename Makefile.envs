@@ -8,7 +8,6 @@ $(ENV_LOCKFILE): environment.yml
 ifeq (conda, $(VIRTUALENV))
 	$(CONDA_EXE) env update -n $(PROJECT_NAME) -f $<
 	$(CONDA_EXE) env export -n $(PROJECT_NAME) -f $@
-	# pip install -e .  # uncomment for conda <= 4.3
 else
 	$(error Unsupported Environment `$(VIRTUALENV)`. Use conda)
 endif

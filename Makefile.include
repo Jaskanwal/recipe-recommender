@@ -1,7 +1,7 @@
 CONDA_EXE ?= ~/miniconda3/bin/conda
 DEBUG_FILE := debug.txt
-MODULE_NAME := src
 PROJECT_DIR := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
+DATA_DIR := $(PROJECT_DIR)/data
 PROJECT_NAME := recipe_recommender
 PYTHON_INTERPRETER := python3
 ARCH := $(shell $(PYTHON_INTERPRETER) -c "import platform; print(platform.platform())")
