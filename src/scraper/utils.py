@@ -1,10 +1,12 @@
 """util function common to different scrapers"""
 import os
-from src.common.logger import get_logger
-import requests
 import shutil
-from src.scraper.constants import headers
+
+import requests
 import structlog
+
+from src.common.logger import get_logger
+from src.scraper.constants import headers
 
 
 def initialize_scraper(website_tag):

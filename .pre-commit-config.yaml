@@ -16,10 +16,6 @@ repos:
     hooks:
     -   id: isort
         args: ['--filter-files', "--profile", "black", "--indent", "    ", "--line-length", "120"]
-        exclude: |
-          (?x)(
-            ^logs |
-          )
 -   repo: https://github.com/psf/black
     rev: '23.12.1'
     hooks:

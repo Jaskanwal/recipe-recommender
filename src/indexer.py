@@ -1,18 +1,21 @@
 """Index the recipies and save them in the vector database."""
-import click
-import json
-from src.common.utils import load_yaml
-from src.common.logger import get_logger
 import glob
+import json
 import os
+
+import click
 import numpy as np
-from langchain_community.vectorstores import Qdrant
-from langchain.embeddings import HuggingFaceEmbeddings
-from langchain import text_splitter
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.schema import Document
 import torch
 from dotenv import load_dotenv
+from langchain import text_splitter
+from langchain.embeddings import HuggingFaceEmbeddings
+from langchain.schema import Document
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_community.vectorstores import Qdrant
+from sentence_transformers import SentenceTransformer
+
+from src.common.logger import get_logger
+from src.common.utils import load_yaml
 
 # load all the environment variables
 load_dotenv()
@@ -76,8 +79,15 @@ def get_embedding_model(embedding_model_name: str) -> HuggingFaceEmbeddings:
     Returns:
         HuggingFaceEmbeddings: An instance of the HuggingFaceEmbeddings class configured with the specified model.
     """
+    # Download model from huggingface and save model parameters locally
+    model_path = os.path.join(os.getenv("DATA_ROOT"), "embedding_models", embedding_model_name)
+    if not os.path.exists(model_path):
+        os.makedirs(model_path)
+        model = SentenceTransformer(embedding_model_name)
+        model.save(model_path)
+
     embeddings_model = HuggingFaceEmbeddings(
-        model_name=embedding_model_name,
+        model_name=model_path,
         model_kwargs={"device": torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")},
         encode_kwargs={"normalize_embeddings": NORMALIZE_EMBEDDINGS},
     )

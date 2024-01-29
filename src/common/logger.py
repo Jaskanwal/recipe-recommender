@@ -1,10 +1,11 @@
-import structlog
 import logging
 import logging.config
-import sys
-from typing import Optional
-from pathlib import Path
 import os
+import sys
+from pathlib import Path
+from typing import Optional
+
+import structlog
 
 
 def initialize_logging() -> None:
