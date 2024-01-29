@@ -1,0 +1,10 @@
+scraped_datasets:
+  - archanaskitchen
+  - thecocktailproject
+  - vegrecipesofindia
+
+embedding_model:
+  model_name: sentence-transformers/all-mpnet-base-v2 # Any hugging face model name compatible with sentence transformer
+  retriver_db_name: recipies_db # Name of the qdrant collections where the embeddings are saved
+  chunk_size: 500 # Number of characters in a single document chunk. Pick a suitable now so that each chunk is less than max_seq_length of the chosen model
+  chunk_overlap: 50 # Number of characters overlap between consecutive chunks

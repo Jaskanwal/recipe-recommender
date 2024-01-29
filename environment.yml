@@ -21,6 +21,9 @@ dependencies:
   - torchvision
   - numpy
   - pandas
+  - sentence-transformers
+  - python-dotenv
+  - streamlit
   - pip:
     - qdrant-client
 prefix: /usr/local/Caskroom/miniconda/base/envs/recipe_recommender

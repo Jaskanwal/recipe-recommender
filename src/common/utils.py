@@ -1,6 +1,7 @@
 import unicodedata
 import re
 import html
+import yaml
 
 # function to remove non-ascii characters from a string
 clean_non_ascii = (
@@ -35,3 +36,17 @@ def clean_string(string: str) -> str:
     string = re.sub(r"[^\x00-\x7F]+|<.*?>", "", string)  # Remove non-ASCII and html characters
 
     return string.strip()
+
+
+def load_yaml(file_path: str) -> dict:
+    """Function to load a yaml file
+
+    Args:
+        file_path (str): path of the yaml file
+
+    Returns:
+        dict: parameter dictionary
+    """
+    with open(file_path, "r") as file:
+        data = yaml.safe_load(file)
+    return data

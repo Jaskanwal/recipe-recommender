@@ -17,7 +17,7 @@ LOGGER, DATA_DIR_RECIPES, DATA_DIR_IMAGES = initialize_scraper(website_tag)
 
 
 def get_recipe_links_on_single_page(x: int) -> Tuple[str, List[str]]:
-    """Get links of all the recepies on a single page
+    """Get links of all the recipes on a single page
 
     Args:
         x (int): Page number to access

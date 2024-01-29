@@ -9,3 +9,11 @@ clean:
 	find . -type f -name "*.py[co]" -delete
 	find . -type d -name "__pycache__" -delete
 	rm -f .make.*
+
+.PHONY: run_qdrant
+## Run Qdrant docker image
+run_qdrant:
+	docker pull qdrant/qdrant
+	docker run -p 6333:6333 -p 6334:6334 \
+    -v $(DATA_DIR)/qdrant_storage:/qdrant/storage \
+    qdrant/qdrant
